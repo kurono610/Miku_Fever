@@ -1,0 +1,1348 @@
+@font-face {
+  font-family: 'MyCustomFont';
+  /* 好きな名前を付けてOK */
+  src: url('/fonts/use_font.ttf') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  background: radial-gradient(circle, #1a1a2e, #090909);
+  color: white;
+  font-family: 'MyCustomFont';
+}
+
+#start-screen {
+  background: radial-gradient(circle at center, #1b1b3a 0%, #050505 100%);
+}
+
+#start-screen h1 {
+  font-size: 5rem;
+  letter-spacing: 0.2rem;
+  text-shadow: 0 0 20px #00f2fe, 0 0 40px #00f2fe;
+  margin-bottom: 50px;
+}
+
+#start-screen button {
+  padding: 15px 40px;
+  margin: 10px;
+  background: transparent;
+  border: 2px solid #00f2fe;
+  color: #00f2fe;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+#start-screen button:hover {
+  background: #00f2fe;
+  color: #000;
+  box-shadow: 0 0 30px #00f2fe;
+  transform: scale(1.1);
+}
+
+.screen {
+  position: absolute;
+  width: 100vw;
+  height: 100vh;
+  display: none;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+
+.screen.active {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  opacity: 1;
+}
+
+#result-screen {
+  gap: 20px;
+}
+
+#result-screen h1 {
+  font-size: 4rem;
+  color: #ff007f;
+  margin-bottom: 20px;
+}
+
+#result-screen #score {
+  font-size: 3rem;
+  font-weight: bold;
+  background: linear-gradient(to right, #00f2fe, #ff007f);
+  -webkit-background-clip: text;
+  color: transparent;
+  margin-bottom: 40px;
+}
+
+#rule-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 9999;
+  /* 数値を大きくして最前面に */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.85);
+  pointer-events: auto;
+  /* クリックを確実に受け取る */
+}
+
+#game-screen {
+  position: relative;
+  overflow: hidden;
+  perspective: 1000px;
+}
+
+/* ライブ感が出る、外側が暗く中心が明るいブラー演出 */
+#game-screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 551;
+  /* 演出としてモニター(500)より上に配置 */
+
+  /* 中心が透明、外側に行くほど暗くなるグラデーション */
+  background: radial-gradient(circle at center,
+      rgba(0, 0, 0, 0.1) 40%,
+      /* 中心30%までは暗くしない */
+      rgba(0, 0, 0, 0.4) 70%,
+      /* 70%地点から徐々に暗く */
+      rgba(0, 0, 0, 0.7) 100%
+      /* 画面端はほぼ真っ暗 */
+    );
+}
+
+#stage-bg,
+#stage-bg2,
+#stage-bg3 {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  /* 画面全体を隙間なく覆う */
+  background-position: center;
+  /* 常に画面中央を基準にトリミング */
+  background-position: center bottom;
+  background-repeat: no-repeat;
+}
+
+#stage-bg {
+  background-image: url('./images/background1.png');
+  filter: brightness(0.6) contrast(1.1) blur(2px);
+  z-index: 10;
+}
+
+#stage-bg2 {
+  background-image: url('./images/background2.png');
+  z-index: 500;
+}
+
+#stage-bg3 {
+  background-image: url('./images/background3.png');
+  z-index: 700;
+}
+
+/* 通常時のライブ照明アニメーション */
+#stage-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at center 30%, rgba(0, 255, 255, 0.35), transparent 50%),
+    radial-gradient(circle at left center, rgba(255, 0, 255, 0.2), transparent 60%),
+    radial-gradient(circle at right center, rgba(0, 128, 255, 0.2), transparent 60%);
+  mix-blend-mode: screen;
+  animation: stageGlow 4s ease-in-out infinite;
+}
+
+/* ========================================================
+   ★ 太鼓の達人風 ゲージのスタイリング
+======================================================== */
+
+#gauge-container {
+  position: absolute;
+  top: 20px;
+  right: 40px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  /* ゲージと画像の間のすき間 */
+  z-index: 1500;
+  pointer-events: none;
+}
+
+#gauge-wrapper {
+  position: relative;
+  width: 250px;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+#gauge-bar {
+  width: 0%;
+  height: 100%;
+  background: #ff4757;
+  transition: width 0.1s ease-out, background-color 0.3s;
+}
+
+#gauge-norma-line {
+  position: absolute;
+  left: 70%;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: #fff;
+  box-shadow: 0 0 4px #000;
+}
+
+#gauge-text-status {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px #000;
+  pointer-events: none;
+}
+
+#gauge-soul-icon {
+  width: 45px;
+  height: 45px;
+  background-image: url('./images/pen.png');
+  /* 💡 通常時の画像を入れてください */
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.6));
+  transition: transform 0.3s, filter 0.3s;
+}
+
+/* ========================================================
+   ⚡ 画面の状態変化
+======================================================== */
+/* ----------------------------------------
+   🟠 1. ノルマ達成時（70%以上）の個別演出
+   ---------------------------------------- */
+/* 【外枠】ゴールド（オレンジ）に光らせる */
+#game-screen.norma-clear #gauge-wrapper {
+  border-color: #ffa502;
+  box-shadow: 0 0 15px rgba(255, 165, 2, 0.6);
+}
+
+/* 【バー】オレンジ色になり、心臓のようにじんわりパルス明滅 */
+#game-screen.norma-clear #gauge-bar {
+  background: #ffa502;
+  animation: barPulse 2s infinite ease-in-out;
+}
+
+/* 【アイコン】画像を切り替え、小刻みにピョコピョコ可愛く傾く */
+#game-screen.norma-clear #gauge-soul-icon {
+  background-image: url('./images/soul_clear.png');
+  /* 💡 クリア時の画像 */
+  filter: drop-shadow(0 0 8px #ffa502);
+  animation: iconWobble 0.8s infinite ease-in-out;
+}
+
+/* ライブ背景の連動も一緒にブレンド */
+#game-screen.norma-clear #stage-bg::after {
+  animation: stageGlowFast 2s ease-in-out infinite;
+  background:
+    radial-gradient(circle at center 30%, rgba(255, 255, 0, 0.5), transparent 50%),
+    radial-gradient(circle at left center, rgba(255, 0, 255, 0.35), transparent 60%),
+    radial-gradient(circle at right center, rgba(0, 255, 255, 0.35), transparent 60%);
+}
+
+/* ----------------------------------------
+   🔥 2. 魂MAX時（100%）の個別演出（超豪華）
+   ---------------------------------------- */
+/* 【外枠】白と赤でバチバチ激しくフラッシュ明滅する */
+#game-screen.soul-max #gauge-wrapper {
+  animation: wrapperFlash 0.3s infinite alternate;
+}
+
+/* 【バー】虹色（グラデーション）になり、その虹が左から右へ高速に流れる */
+#game-screen.soul-max #gauge-bar {
+  background: linear-gradient(90deg, #ff4757, #ffa502, #2ed573, #00f2fe, #ff4757);
+  background-size: 400% 100%;
+  animation: rainbowFlow 1.5s linear infinite;
+}
+
+/* 【アイコン】画像をMAX用にして、炎のようなエフェクトと共に高く激しくジャンプ！ */
+#game-screen.soul-max #gauge-soul-icon {
+  background-image: url('./images/soul_max.png');
+  /* 💡 MAX時の画像 */
+  filter: drop-shadow(0 0 15px #ff4757) brightness(1.2);
+  animation: soulHighJump 0.35s infinite ease-in-out alternate;
+}
+
+/* ライブ背景の連動も一緒にブレンド */
+#game-screen.soul-max #stage-bg::after {
+  animation: stageGlowFurious 0.6s ease-in-out infinite;
+  background:
+    radial-gradient(circle at center 30%, rgba(255, 0, 128, 0.6), transparent 50%),
+    radial-gradient(circle at left center, rgba(0, 255, 255, 0.5), transparent 60%),
+    radial-gradient(circle at right center, rgba(255, 255, 0, 0.5), transparent 60%);
+}
+
+
+/* ========================================================
+   🎬 ゲージパーツ専用 アニメーション定義（@keyframes）
+======================================================== */
+/* 🧡 ノルマ時：バーがじんわり光る */
+@keyframes barPulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.75;
+  }
+}
+
+/* 🧡 ノルマ時：アイコンが左右にコダマのように傾く */
+@keyframes iconWobble {
+
+  0%,
+  100% {
+    transform: rotate(0deg) scale(1.05);
+  }
+
+  25% {
+    transform: rotate(-6deg) scale(1.05);
+  }
+
+  75% {
+    transform: rotate(6deg) scale(1.05);
+  }
+}
+
+/* ❤️ MAX時：枠の激しいフラッシュ */
+@keyframes wrapperFlash {
+  from {
+    border-color: #fff;
+    box-shadow: 0 0 10px #fff;
+  }
+
+  to {
+    border-color: #ff4757;
+    box-shadow: 0 0 20px #ff4757;
+  }
+}
+
+/* ❤️ MAX時：虹色グラデーションが流れる */
+@keyframes rainbowFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  100% {
+    background-position: 400% 50%;
+  }
+}
+
+/* ❤️ MAX時：アイコンのハイパージャンプ */
+@keyframes soulHighJump {
+  from {
+    transform: scale(1.25) translateY(0);
+  }
+
+  to {
+    transform: scale(1.25) translateY(-12px);
+  }
+
+  /* 上に12px跳ね上がる */
+}
+
+/* ----------------------------------------
+   ① 画面外周のオーラ（ネオングロウ）
+   ---------------------------------------- */
+#game-screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 800;
+  /* ノーツ（1000付近）よりは下、背景よりは上の絶妙なレイヤー */
+  box-shadow: inset 0 0 0px transparent;
+  transition: box-shadow 0.5s ease;
+}
+
+/* 【CLEAR! 時】画面のフチがオレンジ色に優しく波打つ */
+#game-screen.norma-clear::before {
+  box-shadow: inset 0 0 30px rgba(255, 165, 2, 0.5);
+  animation: borderGlowEasy 1.5s infinite alternate ease-in-out;
+}
+
+/* 【SOUL MAX!! 時】サイバーカラーのオーラが激しく明滅する */
+#game-screen.soul-max::before {
+  animation: borderGlowFurious 0.3s infinite alternate ease-in-out;
+}
+
+@keyframes borderGlowEasy {
+  from {
+    box-shadow: inset 0 0 20px rgba(255, 165, 2, 0.3);
+  }
+
+  to {
+    box-shadow: inset 0 0 45px rgba(255, 165, 2, 0.7);
+  }
+}
+
+@keyframes borderGlowFurious {
+  0% {
+    box-shadow: inset 0 0 35px rgba(255, 71, 87, 0.8), inset 0 0 15px rgba(0, 242, 254, 0.6);
+  }
+
+  100% {
+    box-shadow: inset 0 0 60px rgba(255, 165, 2, 0.9), inset 0 0 30px rgba(46, 213, 115, 0.7);
+  }
+}
+
+/* ----------------------------------------
+   ② スコア・コンボテキストの覚醒
+   ---------------------------------------- */
+/* 【CLEAR! 時】文字の周りにネオンの光彩を追加 */
+#game-screen.norma-clear #score-display,
+#game-screen.norma-clear #combo-display {
+  text-shadow: 0 0 12px #ffa502, 0 0 25px #ff4757;
+  transition: text-shadow 0.3s ease;
+}
+
+/* 【SOUL MAX!! 時】文字がノリノリで微振動し、レインボーに色変化 */
+#game-screen.soul-max #score-display,
+#game-screen.soul-max #combo-display {
+  animation: textJitter 0.08s infinite, rainbowText 2s infinite linear;
+}
+
+@keyframes textJitter {
+  0% {
+    transform: translate(1px, 1px) rotate(0deg);
+  }
+
+  100% {
+    transform: translate(-1px, -1px) rotate(0.4deg);
+  }
+}
+
+@keyframes rainbowText {
+  0% {
+    color: #ff4757;
+    text-shadow: 0 0 15px #00f2fe;
+  }
+
+  33% {
+    color: #00f2fe;
+    text-shadow: 0 0 15px #2ed573;
+  }
+
+  66% {
+    color: #ffa502;
+    text-shadow: 0 0 15px #ff4757;
+  }
+
+  100% {
+    color: #ff4757;
+    text-shadow: 0 0 15px #00f2fe;
+  }
+}
+
+/* ----------------------------------------
+   ③ 判定ライン（#judge-line）のパワーアップ
+   ---------------------------------------- */
+/* 【SOUL MAX!! 時】判定ライン自体もサイバーブルーに超発光 */
+#game-screen.soul-max #judge-line {
+  border-color: #00f2fe !important;
+  box-shadow: 0 0 20px #00f2fe, 0 0 40px rgba(0, 242, 254, 0.6) !important;
+  filter: brightness(1.3);
+}
+
+/* ========================================================
+   🎬 各種アニメーション定義
+======================================================== */
+@keyframes stageGlow {
+
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+
+  50% {
+    opacity: 0.9;
+    filter: hue-rotate(10deg);
+  }
+}
+
+@keyframes stageGlowFast {
+
+  0%,
+  100% {
+    opacity: 0.6;
+    filter: hue-rotate(0deg);
+  }
+
+  50% {
+    opacity: 1;
+    filter: hue-rotate(90deg);
+  }
+}
+
+@keyframes stageGlowFurious {
+
+  0%,
+  100% {
+    opacity: 0.7;
+    filter: hue-rotate(0deg) saturate(1.5);
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    filter: hue-rotate(180deg) saturate(2);
+    transform: scale(1.02);
+  }
+}
+
+@keyframes gaugeFlicker {
+  from {
+    filter: brightness(1);
+  }
+
+  to {
+    filter: brightness(1.3);
+  }
+}
+
+@keyframes lyricsAnimate {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 15px) scale(0.9);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+/* ========================================================
+   その他の既存スタイル
+======================================================== */
+#screen-area {
+  position: absolute;
+  left: 23%;
+  top: 10%;
+  width: 53%;
+  height: auto;
+  /* 👈 高さを固定せず、画像本来の比率に合わせる */
+  overflow: hidden;
+  filter: drop-shadow(0 0 20px rgba(0, 242, 254, 0.2));
+  z-index: 200;
+}
+
+#screen-video {
+  width: 100%;
+  height: auto;
+  /* 👈 縦横比を維持して拡大縮小 */
+  display: block;
+  /* 👈 余計な隙間をなくす */
+}
+
+.title {
+  font-size: 5rem;
+  text-shadow: 0 0 10px cyan, 0 0 20px cyan;
+}
+
+button {
+  font-family: 'MyCustomFont', sans-serif;
+  background: transparent;
+  color: #fff;
+  border: 2px solid #00f2fe;
+  /* ネオンカラーの枠 */
+  padding: 10px 20px;
+  cursor: pointer;
+  text-transform: uppercase;
+
+  /* ホバーした時に光る演出 */
+  transition: all 0.3s;
+}
+
+button:hover {
+  background: #00f2fe;
+  color: #000;
+  box-shadow: 0 0 15px #00f2fe;
+}
+
+#skipBtn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+}
+
+#lyrics {
+  position: absolute;
+  top: 35%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: white;
+  z-index: 900;
+  text-align: center;
+  white-space: normal;
+  pointer-events: none;
+  max-width: 80vw;
+  max-height: calc(2.2rem*1.4*2);
+  overflow: hidden;
+  line-height: 1.4;
+  transition: all 0.3s ease;
+}
+
+#lyrics.has-bubble {
+  background: rgba(0, 0, 0, 0.65);
+  padding: 12px 28px;
+  border-radius: 30px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
+}
+
+.lyric-char {
+  display: inline-block;
+  opacity: 0.15;
+  transform: scale(0.95);
+  transition: all 0.18s ease;
+  margin: 0 1px;
+}
+
+.lyric-char.char-shown {
+  opacity: 1;
+  color: #00f2fe;
+  text-shadow: 0 0 12px rgba(0, 242, 254, 0.8), 0 0 24px rgba(0, 242, 254, 0.4);
+  animation: charPop 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes charPop {
+  0% {
+    transform: scale(0.95);
+  }
+
+  50% {
+    transform: scale(1.15);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+.lyrics-show {
+  animation: lyricsAnimate 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+#note-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1000;
+}
+
+.note {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+
+  /* 🌐 変更点：ベタ塗りの白を廃止し、半透明のサイバーガラス質感に */
+  background: rgba(10, 14, 28, 0.8);
+
+  /* ⚡ 変更点：鋭いネオンブルーの枠線と、内外への発光エフェクト（グロウ） */
+  border: 2px solid #00f2fe;
+  box-shadow:
+    0 0 15px rgba(0, 242, 254, 0.8),
+    /* 外側への強い光の広がり */
+    inset 0 0 12px rgba(0, 242, 254, 0.5);
+  /* 内側へのじんわりとした発光 */
+
+  cursor: pointer;
+  overflow: hidden;
+
+  /* 🎯 中の画像（ペンライト）を完璧に中央へ整列 */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  z-index: 1000;
+}
+
+/* ========================================================
+   🎵 ノーツ中心のマーク画像（サイズ・角度の調整版）
+======================================================== */
+.note::after {
+  /* ──────────────────────────────────────────────────
+       🛠️ 【ここを調整！】サイズと角度をいつでも自由に変えられます
+     ────────────────────────────────────────────────── */
+  --mark-size: 60px;
+  /* 👈 マークの大きさ（白丸が80pxなので、60px〜65pxくらいまで大きくできます） */
+  --mark-angle: 0deg;
+  /* 👈 マークの傾き（例: 45degで斜め、90degで真横、-90degで逆など） */
+  /* ────────────────────────────────────────────────── */
+
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+
+  /* ✨ アニメーションや位置がズレない魔法の配置（中央揃えを維持しながら回転させます） */
+  transform: translate(-50%, -50%) rotate(var(--mark-angle));
+
+  /* 上で設定したサイズを自動適用 */
+  width: var(--mark-size);
+  height: var(--mark-size);
+
+  /* 画像の読み込みとブレンド加工 */
+  background-image: url('./images/pen.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+
+  /* 💎 違和感をなくすための発光・馴染ませ加工 */
+  opacity: 0.88;
+  mix-blend-mode: screen;
+  filter: drop-shadow(0 0 6px #00f2fe);
+}
+
+#judge-line {
+  position: absolute;
+  left: 0;
+  bottom: 120px;
+  width: 100%;
+  height: 4px;
+  background: white;
+  box-shadow: 0 0 10px cyan;
+  z-index: 800;
+}
+
+.approach {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  border: 2px solid cyan;
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  animation: approachMove 1s linear forwards;
+}
+
+@keyframes approachMove {
+  from {
+    transform: translate(-50%, -50%) scale(2);
+  }
+
+  to {
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+#score-display {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  font-size: 2rem;
+  z-index: 1500;
+  color: white;
+  pointer-events: none;
+}
+
+#combo-display {
+  position: absolute;
+  top: 48px;
+  left: 20px;
+  font-size: 1.2rem;
+  z-index: 1500;
+  color: #00f2fe;
+  pointer-events: none;
+}
+
+#judge-text {
+  position: absolute;
+  left: 50%;
+  top: 60%;
+  transform: translate(-50%, -50%);
+  font-size: 4rem;
+  font-weight: bold;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1500;
+}
+
+.judge-show {
+  animation: judgePop .5s ease-out;
+}
+
+@keyframes judgePop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(.5);
+  }
+
+  20% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -100%) scale(1.2);
+  }
+}
+
+#pause-menu {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  background: rgba(0, 0, 0, .7);
+  z-index: 9999;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* 💨 スモークパーティクル単体のスタイル */
+.smoke-particle {
+  position: absolute;
+  bottom: -100px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(10px);
+  z-index: 300;
+  animation: smokeBlast 2.5s ease-out forwards;
+}
+
+@keyframes smokeBlast {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0.6;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: translateY(-900px) scale(6);
+    opacity: 0;
+  }
+}
+
+/* ========================================================
+   ★ 音楽に合わせて跳ねるキャラクターのスタイル
+======================================================== */
+
+
+.bounce-animate {
+  animation: kubiPop 0.8s ease-out forwards;
+}
+
+@keyframes kubiPop {
+  0% {
+    transform: scale(1, 1) translateY(0);
+  }
+
+  25% {
+    transform: scale(0.85, 1.2) translateY(-25px);
+  }
+
+  65% {
+    transform: scale(1.15, 0.8) translateY(0);
+  }
+
+  85% {
+    transform: scale(0.95, 1.02) translateY(-3px);
+  }
+
+  100% {
+    transform: scale(1, 1) translateY(0);
+  }
+}
+
+/* ========================================================
+   ★ ファイルの最下部などに追加：回転アニメーションの定義
+======================================================== */
+.spin-animate {
+  animation: kubiSpin 0.8s ease-out forwards;
+  /* 基準の秒数を増やす */
+}
+
+@keyframes kubiSpin {
+  0% {
+    /* 【正面】スタート */
+    transform: rotateY(0deg) translateY(0) scale(1, 1);
+  }
+
+  20% {
+    /* 【180°反転】まずは左から右へくるっと素早く後ろを向く */
+    transform: rotateY(180deg) translateY(0) scale(1, 1);
+  }
+
+  45% {
+    /* ★【後ろを向いたまま大ジャンプ！】 */
+    /* 角度は180deg（真後ろ）をキープしたまま、translateYで上に高く飛び跳ねます */
+    transform: rotateY(180deg) translateY(-45px) scale(0.85, 1.25);
+  }
+
+  70% {
+    /* ★【後ろを向いたまま着地】 */
+    /* まだ真後ろを向いたまま地面に激突し、勢いでムギュッと横に潰れます */
+    transform: rotateY(180deg) translateY(0) scale(1.25, 0.7);
+  }
+
+  85% {
+    /* 【正面に戻り始める】元の向きに向かって回転しながら、反動で少し体が浮く */
+    transform: rotateY(90deg) translateY(-8px) scale(0.95, 1.05);
+  }
+
+  100% {
+    /* 【正面を向いて完全着地】綺麗に元の状態に戻る */
+    transform: rotateY(0deg) translateY(0) scale(1, 1);
+  }
+}
+
+.sabi-animate {
+  animation: kubiSabiDance 0.35s ease-out forwards;
+}
+
+@keyframes kubiSabiDance {
+  0% {
+    transform: scale(1, 1) translateY(0) rotate(0deg);
+  }
+
+  20% {
+    /* 左に傾きながら上に大きく跳ねる */
+    transform: scale(0.85, 1.3) translateY(-40px) rotate(-10deg);
+  }
+
+  50% {
+    /* 右にクイッと傾く */
+    transform: scale(1, 1.1) translateY(-20px) rotate(10deg);
+  }
+
+  75% {
+    /* 着地してムギュッと潰れる */
+    transform: scale(1.2, 0.7) translateY(0) rotate(0deg);
+  }
+
+  100% {
+    transform: scale(1, 1) translateY(0) rotate(0deg);
+  }
+}
+
+/* ==========================================
+   ★ 追加：ローディング画面のスタイル
+========================================== */
+#loading-screen {
+  background-color: #090909;
+  z-index: 10000;
+  display: none;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  gap: 24px;
+}
+
+#loading-screen.active {
+  display: flex;
+}
+
+.spinner {
+  width: 60px;
+  height: 60px;
+  border: 5px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #00f2fe;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loading-text {
+  font-size: 1.4rem;
+  font-weight: bold;
+  color: #00f2fe;
+  letter-spacing: 6px;
+  text-shadow: 0 0 10px rgba(0, 242, 254, 0.6);
+  animation: loadingBlink 1.5s infinite ease-in-out;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes loadingBlink {
+
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ========================================================
+   ★ ファイルの最下部に新オブジェクト2つを追加
+======================================================== */
+#kubi-char,
+#object-1,
+#object-2 {
+  position: absolute;
+  left: 50%;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center bottom;
+  transform-origin: center bottom;
+  pointer-events: none;
+  filter: drop-shadow(0 10px 10px rgba(0, 0, 0, 0.8));
+}
+
+/* 画面の高さ（vh）を基準に大きさを決めることで、
+  背景画像が縮小したときにキャラクターたちも「同じ縮小率」で小さくなります。
+*/
+#kubi-char {
+  --size: 40vh;
+  /* 👈 画面の高さに対するパーセンテージに統一 */
+  width: var(--size);
+  height: var(--size);
+  margin-left: calc(var(--size) / -2);
+  bottom: 10vh;
+  /* 👈 床の位置に合わせて調整 */
+  background-image: url('./images/normal.png');
+  z-index: 600;
+}
+
+#object-1 {
+  --size: 40vh;
+  /* キャラクターと完全に同じサイズに同期 */
+  width: var(--size);
+  height: var(--size);
+  margin-left: calc(var(--size) / -2);
+  bottom: 5vh;
+  /* キャラクターより少し手前（下）に置く */
+  background-image: url('./images/DJBox.png');
+  z-index: 700;
+}
+
+#object-2 {
+  --size: 80vh;
+  /* スピーカーは大迫力にするため大きめ */
+  width: var(--size);
+  height: var(--size);
+  margin-left: calc(var(--size) / -2);
+  bottom: 8vh;
+  /* 画面下部にめり込ませる */
+  background-image: url('./images/speaker.png');
+  z-index: 490;
+  transition: transform 0.05s ease-out;
+  transform-origin: center bottom;
+  /* 背景2の後ろ、または前に置く（レイヤー順はお好みで） */
+}
+
+/* ========================================================
+   ✨ p5.js不要！CSS100%で作るライブ演出スタイル
+======================================================== */
+
+/* 演出全体の土台（マウス操作を邪魔しない） */
+#live-effects-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1000;
+  /* 背景の上、キャラの下 */
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* 🔦 スポットライト共通設定 */
+.spotlight {
+  position: absolute;
+  top: 0;
+  width: 40vw;
+  height: 150vh;
+  /* 三角形の光の筋を作る魔法のプロパティ */
+  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  background: linear-gradient(to bottom, rgba(0, 242, 254, 0.3), transparent 80%);
+  transform-origin: top center;
+  mix-blend-mode: screen;
+}
+
+.spotlight-left {
+  left: 10%;
+  animation: spotlightLeftSwing 6s infinite ease-in-out;
+}
+
+.spotlight-right {
+  right: 10%;
+  animation: spotlightRightSwing 5.5s infinite ease-in-out;
+}
+
+/* 🏮 ペンライトのコンテナ（画面最下部に並べる） */
+.penlight-container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100px;
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+}
+
+/* ペンライト1本ずつの初期状態（ゲージが低い時は暗くて動かない状態にする） */
+.penlight {
+  width: 4px;
+  height: 60px;
+  background: rgba(0, 242, 254, 0.15);
+  /* 💡 最初は非常に薄く暗い色 */
+  border-radius: 4px;
+  box-shadow: none;
+  /* 💡 最初は光らせない */
+  transform-origin: bottom center;
+  animation: none;
+  /* 💡 最初はアニメーションを動かさない */
+  transition: all 0.5s ease;
+  /* 光が点灯するときにフワッと変化させる */
+}
+
+/* ========================================================
+   ⚡ ゲージ量によるペンライトの「点灯」と「速度」切り替え
+======================================================== */
+
+/* 🟢 ゲージが中くらい（40%以上）になったら初めて点灯して動き出す！ */
+#live-effects-layer.speed-mid .penlight {
+  background: #00f2fe;
+  box-shadow: 0 0 12px #00f2fe, 0 0 4px #fff;
+  animation: penlightSwing 1.2s infinite ease-in-out;
+  /* 通常の揺れ */
+}
+
+/* 🔴 ゲージがMAX付近（80%以上）ならウルトラオレンジや超高速モードに！ */
+#live-effects-layer.speed-fast .penlight {
+  background: #00f2fe;
+  box-shadow: 0 0 20px #00f2fe, 0 0 6px #fff;
+  animation: penlightSwing 0.45s infinite ease-in-out;
+  /* 激しく高速に！ */
+}
+
+/* ========================================================
+   🌈 サビ（chorusMode）かつゲージがある時のカラー切り替え
+======================================================== */
+#live-effects-layer.is-chorus.speed-mid .penlight {
+  background: #0091ff;
+  /* サビ中はウルトラオレンジ */
+  box-shadow: 0 0 15px #00f2ff, 0 0 4px #fff;
+}
+
+#live-effects-layer.is-chorus.speed-fast .penlight {
+  background: #0091ff;
+  /* サビかつ高ゲージなら激しいピンク */
+  box-shadow: 0 0 25px #00f2ff, 0 0 6px #fff;
+}
+
+
+/* レーザーの基本形（最初は非表示） */
+.laser {
+  position: absolute;
+  top: 20%;
+  width: 150vw;
+  height: 2px;
+  /* 👈 鋭さを出すために極細にする */
+  background: #ff007f;
+  box-shadow: 0 0 15px #ff007f, 0 0 4px #fff;
+  opacity: 0;
+  pointer-events: none;
+  transform-origin: left center;
+}
+
+.laser-1 {
+  left: -10vw;
+  transform: rotate(15deg);
+}
+
+.laser-2 {
+  right: -10vw;
+  transform: rotate(-15deg);
+  transform-origin: right center;
+  background: #00f2fe;
+  box-shadow: 0 0 15px #00f2fe, 0 0 4px #fff;
+}
+
+/* 🌈 サビ（is-chorus）に入ったらレーザーが起動して激しくスキャン開始！ */
+#live-effects-layer.is-chorus .laser {
+  opacity: 0.8;
+}
+
+#live-effects-layer.is-chorus .laser-1 {
+  animation: laserScanLeft 1.2s infinite ease-in-out alternate;
+}
+
+#live-effects-layer.is-chorus .laser-2 {
+  animation: laserScanRight 0.9s infinite ease-in-out alternate;
+}
+
+@keyframes laserScanLeft {
+  0% {
+    transform: rotate(5deg);
+  }
+
+  100% {
+    transform: rotate(45deg);
+  }
+}
+
+@keyframes laserScanRight {
+  0% {
+    transform: rotate(-5deg);
+  }
+
+  100% {
+    transform: rotate(-45deg);
+  }
+}
+
+/* ========================================================
+   🎬 アニメーションの軌道（@keyframes）
+======================================================== */
+@keyframes spotlightLeftSwing {
+
+  0%,
+  100% {
+    transform: rotate(-15deg);
+  }
+
+  50% {
+    transform: rotate(30deg);
+  }
+}
+
+@keyframes spotlightRightSwing {
+
+  0%,
+  100% {
+    transform: rotate(15deg);
+  }
+
+  50% {
+    transform: rotate(-30deg);
+  }
+}
+
+@keyframes penlightSwing {
+
+  0%,
+  100% {
+    transform: rotate(-20deg);
+  }
+
+  50% {
+    transform: rotate(20deg);
+  }
+}
+
+
+/* 通常時は控えめに */
+.vibrate-normal {
+  animation: vibrateSpeaker 0.4s infinite ease-in-out;
+}
+
+/* サビ時は激しく */
+.vibrate-chorus {
+  animation: vibrateSpeakerChorus 0.2s infinite ease-in-out;
+}
+
+/* 揺れ方の定義 */
+@keyframes vibrateSpeaker {
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.05);
+  }
+
+  /* 3%拡大 */
+}
+
+@keyframes vibrateSpeakerChorus {
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.15);
+  }
+
+  /* 8%拡大＋速いリズム */
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+#start-screen h1 {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* スマホ向け調整 */
+@media screen and (max-width: 768px) {
+  h1 {
+    font-size: 2.5rem;
+  }
+
+  button {
+    padding: 20px 40px;
+    font-size: 1.5rem;
+  }
+
+  .note {
+    width: 80px;
+    height: 80px;
+  }
+}
